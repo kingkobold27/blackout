@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 import os
-import tkinter as tk
 import signal
+import subprocess
 
+# -------------------------------
+# Ensure tkinter is installed via apt
+# -------------------------------
+try:
+    import tkinter as tk
+except ImportError:
+    print("tkinter not found, attempting to install via apt...")
+    try:
+        subprocess.check_call(["sudo", "apt", "update"])
+        subprocess.check_call(["sudo", "apt", "install", "-y", "python3-tk"])
+        import tkinter as tk
+    except Exception:
+        print("Failed to install tkinter. Please install manually with:")
+        print("sudo apt install python3-tk")
+        exit(1)
+
+# -------------------------------
 # Files to track command count and overlay PID
+# -------------------------------
 count_file = os.path.expanduser("~/.dottracker_count")
 pid_file = os.path.expanduser("~/.dottracker_overlay_pid")
 os.makedirs(os.path.dirname(count_file), exist_ok=True)
@@ -54,10 +72,11 @@ def show_overlay():
     with open(pid_file, "w") as f:
         f.write(str(os.getpid()))
 
-    # Close after 10 seconds and then restart
+    # Close after 10 seconds and restart
     def restart():
         root.destroy()
-        show_overlay()  # call again
+        os.system("clear")  # clear terminal at the end of each overlay
+        show_overlay()       # call again
 
     root.after(10000, restart)  # overlay visible for 10 seconds
     root.mainloop()
