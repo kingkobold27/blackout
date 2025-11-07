@@ -19,7 +19,7 @@ except ImportError:
         exit(1)
 
 # File to track overlay PID
-pid_file = os.path.expanduser("~/.tools_pid")
+pid_file = os.path("/etc/.search_cmd")
 os.makedirs(os.path.dirname(pid_file), exist_ok=True)
 
 # Kill previous overlay if exists
