@@ -1,2 +1,2 @@
-# blackout
-tool that completely blacks out the screen periodically
+# Loading Tips
+Tool that provides fun tips for users!
