@@ -121,13 +121,18 @@ FUN_FACTS = [
 ]
 
 def get_font_name():
+    """Return Comic Sans if available, else DejaVu Sans."""
     try:
         available_fonts = list(tk.font.families())
     except Exception:
         available_fonts = []
-    return "Comic Sans MS" if "Comic Sans MS" in available_fonts else "DejaVu Sans"
+
+    if "Comic Sans MS" in available_fonts:
+        return "Comic Sans MS"
+    return "DejaVu Sans"
 
 def launch_overlay():
+    """Parent loop: relaunch the overlay if it dies."""
     while True:
         proc = subprocess.Popen([sys.executable, SCRIPT_PATH, "--child"])
         try:
@@ -139,6 +144,7 @@ def launch_overlay():
 def run_overlay():
     font_name = get_font_name()
 
+    # Kill old overlay if running
     if os.path.exists(PID_FILE):
         try:
             with open(PID_FILE, "r") as f:
@@ -163,41 +169,34 @@ def run_overlay():
     text_color = "#7CFC00"
     font_weight = "bold"
 
+    # Create text item once
+    initial_word = random.choice(FUN_FACTS)
     text_item = canvas.create_text(
         x, y,
-        text=random.choice(FUN_FACTS),
+        text=initial_word,
         fill=text_color,
         font=(font_name, 50, font_weight),
         width=screen_width - 100,
         justify="center"
     )
 
-    def scale_text():
-        font_size = 50
+    # Auto-scale initial font
+    bbox = canvas.bbox(text_item)
+    font_size = 50
+    while bbox[3] - bbox[1] > screen_height - 100 and font_size > 10:
+        font_size -= 2
         canvas.itemconfig(text_item, font=(font_name, font_size, font_weight))
         bbox = canvas.bbox(text_item)
-        while bbox[3] - bbox[1] > screen_height - 100 and font_size > 10:
-            font_size -= 2
-            canvas.itemconfig(text_item, font=(font_name, font_size, font_weight))
-            bbox = canvas.bbox(text_item)
 
-    scale_text()
-
+    # Save PID
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
 
     def toggle_overlay():
-        # Hide entire overlay
-        root.withdraw()
-        # Wait 20 seconds (same as text interval), then show new fact
-        root.after(20000, show_new_fact)
-
-    def show_new_fact():
         new_word = random.choice(FUN_FACTS)
-        canvas.itemconfig(text_item, text=new_word)
-        scale_text()
-        root.deiconify()
-        root.after(20000, toggle_overlay)
+        canvas.itemconfig(text_item, text=new_word)  # update same text item
+        root.withdraw()
+        root.after(20000, lambda: (root.deiconify(), root.after(20000, toggle_overlay)))
 
     root.after(20000, toggle_overlay)
 
@@ -210,8 +209,11 @@ def run_overlay():
     root.protocol("WM_DELETE_WINDOW", on_close)
     root.mainloop()
 
+
 if __name__ == "__main__":
     if "--child" in sys.argv:
         run_overlay()
     else:
         launch_overlay()
+
+make the text not stack on itself
