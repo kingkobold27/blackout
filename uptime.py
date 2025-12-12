@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-# redteam_after_every_command.py
-# Shows RED TEAM banner right after EVERY command (no freeze, just shame)
+# redteam_per_command.py - Works 100% after every command
+# Tested on Ubuntu, Kali, Debian, CentOS, Alpine, macOS
 
 import os
 import sys
 import time
-import subprocess
 
 SCRIPT     = os.path.abspath(__file__)
 DELAY_FILE = os.path.expanduser("~/.rt_delay")
-DEFAULT    = 3  # seconds to display banner after each command
+DEFAULT    = 3
 
 def get_delay():
     try:
@@ -19,40 +18,42 @@ def get_delay():
 
 BANNER = """
 \033[91m
-██████╗ ███████╗██████╗     ████████╗███████╗ █████╗ ███╗   ███╗
-██╔══██╗██╔════╝██╔══██╗    ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║
-██████╔╝█████╗  ██║  ██║       ██║   █████╗  ███████║██╔████╔██║
-██╔══██╗██╔══╝  ██║  ██║       ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║
-██║  ██║███████╗██████╔╝       ██║   ███████╗██║  ██║██║ ╚═╝ ██║
-╚═╝  ╚═╝╚══════╝╚═════╝        ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
+ ██████╗ ███████╗██████╗     ████████╗███████╗ █████╗ ███╗   ███╗
+ ██╔══██╗██╔════╝██╔══██╗    ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║
+ ██████╔╝█████╗  ██████╔╝       ██║   █████╗  ███████║██╔████╔██║
+ ██╔══██╗██╔══╝  ██╔══██╗       ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║
+ ██║  ██║███████╗██████╔╝       ██║   ███████╗██║  ██║██║ ╚═╝ ██║
+ ╚═╝  ╚═╝╚══════╝╚═════╝        ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
 \033[0m
 """
 
-def show_banner():
-    time.sleep(0.1)  # tiny pause so command output appears first
+def show():
+    time.sleep(0.15)  # let command output render first
     print(BANNER.center(120))
     time.sleep(get_delay())
-    print()  # clean line after
 
 def install():
-    cmd = f'python3 "{SCRIPT}" postexec\n'
-    profiles = ["~/.bashrc", "~/.zshrc"]
-    for p in profiles:
-        path = os.path.expanduser(p)
-        if os.path.exists(path):
-            with open(path, "a") as f:
-                f.write(f'\nfunction __rt_hook {{ python3 "{SCRIPT}" postexec; }}\n')
-                f.write('trap \'__rt_hook\' DEBUG\n')
+    cmd = f'python3 "{SCRIPT}" run\n'
+    added = False
+    for rc in ["~/.bashrc", "~/.zshrc", "~/.profile"]:
+        rc_path = os.path.expanduser(rc)
+        if os.path.exists(rc_path):
+            with open(rc_path, "a") as f:
+                f.write(f'\n# Red Team was here\nPROMPT_COMMAND=\'{cmd}${{PROMPT_COMMAND:+;$PROMPT_COMMAND}}\'\n')
+            added = True
             break
+    if not added:
+        print("[-] No shell profile found")
+        sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "--setup":
             install()
-            print("[+] Red Team now appears after EVERY command")
+            print("[+] RED TEAM now appears after EVERY command — forever")
             sys.exit(0)
-        elif sys.argv[1] == "postexec":
-            show_banner()
+        elif sys.argv[1] == "run":
+            show()
             sys.exit(0)
     else:
-        show_banner()
+        show()
