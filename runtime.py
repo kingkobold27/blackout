@@ -9,6 +9,7 @@ import tkinter as tk
 
 SCRIPT_PATH = os.path.abspath(__file__)
 PID_FILE = os.path.expanduser("~/.search_cmd")
+DELAY = 20000
 
 # Full list of fun facts
 FUN_FACTS = [
@@ -190,7 +191,7 @@ def run_overlay():
         # Hide entire overlay
         root.withdraw()
         # Wait 20 seconds (same as text interval), then show new fact
-        root.after(20000, show_new_fact)
+        root.after(DELAY, show_new_fact)
 
     def show_new_fact():
         # Pick a new fact that is different from the current one
